@@ -43,4 +43,11 @@ public class PetClinicApplication {
 		}
 	}
 
+	public void vicNewFunction222() {
+		for (int i = 0; i < 30; i++) {
+			int x = ThreadLocalRandom.current().nextInt();
+			System.out.println("Vic lalala untested " + x);
+		}
+	}
+
 }
