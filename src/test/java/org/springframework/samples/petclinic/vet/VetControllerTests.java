@@ -22,7 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.aot.DisabledInAotMode;
@@ -30,9 +32,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.ui.ConcurrentModel;
+import org.springframework.ui.Model;
+
+import java.util.Collections;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -97,4 +106,43 @@ class VetControllerTests {
 			.andExpect(jsonPath("$.vetList[0].id").value(1));
 	}
 
+	@Test
+	void testShowVetListHtml_WithValidPagination() throws Exception {
+		// Prepare data for the test
+		Vet james = james();
+		Vet helen = helen();
+		Vet sam = new Vet();
+		sam.setFirstName("Sam");
+		sam.setLastName("Smith");
+		sam.setId(3);
+
+		List<Vet> vetList = Lists.newArrayList(james, helen, sam);
+		Page<Vet> paginatedVets = new PageImpl<>(vetList, PageRequest.of(0, 5), vetList.size());
+
+		given(this.vets.findAll(any(Pageable.class))).willReturn(paginatedVets);
+
+		mockMvc.perform(get("/vets.html?page=1"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("currentPage", 1))
+			.andExpect(model().attribute("totalPages", 1))
+			.andExpect(model().attribute("totalItems", 3L))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testShowVetListHtml_WithNoVets() throws Exception {
+		// Prepare empty data
+		Page<Vet> paginatedVets = new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 5), 0);
+
+		given(this.vets.findAll(any(Pageable.class))).willReturn(paginatedVets);
+
+		mockMvc.perform(get("/vets.html?page=1"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("currentPage", 1))
+			.andExpect(model().attribute("totalPages", 0))
+			.andExpect(model().attribute("totalItems", 0L))
+			.andExpect(view().name("vets/vetList"));
+	}
 }
